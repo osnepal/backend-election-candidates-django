@@ -1,137 +1,98 @@
-from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from drf_spectacular.utils import extend_schema
+
 from apps.political_party.models import PoliticalParty
+from apps.political_party.serializers import GetPoliticalPartyDetailSerializer
 from utils.core.base_views import PublicAPIView
 from utils.core.response_wrappers import OKResponse, NoContentResponse
 from utils.political_party.core import PoliticalPartyUtil
 
 
-# ---------- DETAIL ----------
-
-
-class GetPoliticalPartyDetailAPI(PublicAPIView):
+# ---------------------------------------------------------------------
+# List + Create
+# ---------------------------------------------------------------------
+class PoliticalPartyListCreateAPI(PublicAPIView):
     """
-    Get political party detail
-    """
-
-    extra_permissions = []
-
-    class OutputSerializer(serializers.ModelSerializer):
-        class Meta:
-            model = PoliticalParty
-            fields = [
-                "id",
-                "name",
-                "description",
-                "slug",
-                "abbreviation",
-                "founded_date",
-                "ideology",
-                "hq_location",
-                "website",
-                "logo_url",
-            ]
-            # required by drf spectacular if we need to use same name (OutputSerializer) for different serializers
-            ref_name = "PoliticalPartyDetailSerializer"
-
-    output_serializer = OutputSerializer
-
-    @extend_schema(responses=output_serializer)
-    def get(self, request, pk):
-        party = get_object_or_404(PoliticalParty, pk=pk)
-        serializer = self.output_serializer(instance=party)
-        return OKResponse(data=serializer.data)
-
-
-# ---------- LIST ----------
-class GetPoliticalPartyListAPI(PublicAPIView):
-    """
-    Get political party list
+    GET: List all political parties
+    POST: Create a new political party
     """
 
-    extra_permissions = []
-
-    output_serializer = GetPoliticalPartyDetailAPI.OutputSerializer
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    output_serializer = GetPoliticalPartyDetailSerializer
 
     @extend_schema(responses=output_serializer(many=True))
     def get(self, request):
-        parties = PoliticalParty.objects.all().order_by("-created_at")
-        serializer = self.output_serializer(parties, many=True)
+        """
+        GET: List all political parties
+        """
+        queryset = PoliticalParty.objects.all().order_by("-created_at")
+        serializer = self.output_serializer(queryset, many=True)
         return OKResponse(data=serializer.data)
-
-
-# ---------- CREATE ----------
-
-
-class CreatePoliticalPartyAPI(PublicAPIView):
-    """
-    Create political party
-    """
-
-    extra_permissions = []
-
-    output_serializer = GetPoliticalPartyDetailAPI.OutputSerializer
 
     @extend_schema(
         request=PoliticalPartyUtil.create_serializer,
         responses=output_serializer,
     )
     def post(self, request):
-        data = request.data
-        political_party = PoliticalPartyUtil.create_political_party(data)
-
-        # prepare output data
-        output_data = self.output_serializer(political_party).data
-
+        """
+        POST: Create a new political party
+        """
+        instance = PoliticalPartyUtil.create_political_party(request.data)
+        serializer = self.output_serializer(instance)
         return OKResponse(
-            data=output_data, message="Political Party created successfully"
+            data=serializer.data, message="Political Party created successfully"
         )
 
 
-# ---------- UPDATE ----------
-
-
-class UpdatePoliticalPartyAPI(PublicAPIView):
+# ---------------------------------------------------------------------
+# Retrieve + Update + Delete
+# ---------------------------------------------------------------------
+class PoliticalPartyRetrieveUpdateDeleteAPI(PublicAPIView):
     """
-    Update political party
+    GET: Retrieve
+    PATCH: Update
+    DELETE: Delete
     """
 
-    extra_permissions = []
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    output_serializer = GetPoliticalPartyDetailSerializer
 
-    output_serializer = GetPoliticalPartyDetailAPI.OutputSerializer
+    def get_object(self, pk):
+        return get_object_or_404(PoliticalParty, pk=pk)
+
+    @extend_schema(responses=output_serializer)
+    def get(self, request, pk):
+        """
+        GET: Retrieve political party
+        """
+        instance = self.get_object(pk)
+        serializer = self.output_serializer(instance)
+        return OKResponse(data=serializer.data)
 
     @extend_schema(
         request=PoliticalPartyUtil.update_serializer,
         responses=output_serializer,
     )
     def patch(self, request, pk):
-        political_party = get_object_or_404(PoliticalParty, pk=pk)
+        """
+        PATCH: Update political party
+        """
+        instance = self.get_object(pk)
+        PoliticalPartyUtil.update_political_party(instance, request.data)
 
-        data = request.data
-
-        updated_political_party = PoliticalPartyUtil.update_political_party(
-            political_party, data
+        updated_instance = self.get_object(pk)
+        serializer = self.output_serializer(updated_instance)
+        return OKResponse(
+            data=serializer.data, message="Political Party updated successfully"
         )
-
-        # prepare output data
-        party = self.output_serializer(updated_political_party).data
-
-        return OKResponse(data=party, message="Political Party updated successfully")
-
-
-# ---------- DELETE ----------
-class DeletePoliticalPartyAPI(PublicAPIView):
-    """
-    Delete political party
-    """
-
-    extra_permissions = []
 
     @extend_schema(responses=None)
     def delete(self, request, pk):
-        political_party = get_object_or_404(PoliticalParty, pk=pk)
-
-        PoliticalPartyUtil.delete_political_party(political_party)
-
+        """
+        DELETE: Delete political party
+        """
+        instance = self.get_object(pk)
+        PoliticalPartyUtil.delete_political_party(instance)
         return NoContentResponse(message="Political Party deleted successfully")

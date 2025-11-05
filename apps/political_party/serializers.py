@@ -63,3 +63,23 @@ class UpdatePoliticalPartySerializer(serializers.ModelSerializer):
             "website": {"required": True, "allow_blank": True},
             "logo_url": {"required": True, "allow_blank": False},
         }
+
+
+class GetPoliticalPartyDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PoliticalParty
+        fields = [
+            "id",
+            "slug",
+            "name",
+            "abbreviation",
+            "description",
+            "founded_date",
+            "ideology",
+            "hq_location",
+            "website",
+            "logo_url",
+            "created_at",
+            "updated_at",
+        ]
+        ref_name = "GetPoliticalPartyDetailSerializer"
