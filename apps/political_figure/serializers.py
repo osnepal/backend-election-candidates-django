@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from apps.core.models import Address
-from apps.core.serializers import CreateAddressSerializer, UpdateAddressSerializer
+from apps.core.serializers import (
+    CreateAddressSerializer,
+    GetAddressSerializer,
+    UpdateAddressSerializer,
+)
 from apps.political_figure.models import PoliticalFigure
 
 
@@ -77,3 +81,36 @@ class UpdatePoliticalFigureSerializer(serializers.ModelSerializer):
             "instagram_url",
             "is_active",
         ]
+
+
+class GetPoliticalFigureDetailSerializer(serializers.ModelSerializer):
+    political_party_name = serializers.CharField(source="political_party.name")
+    political_party_slug = serializers.CharField(source="political_party.slug")
+
+    home_address = GetAddressSerializer()
+    current_address = GetAddressSerializer()
+
+    class Meta:
+        model = PoliticalFigure
+        fields = [
+            "id",
+            "uuid",
+            "slug",
+            "full_name",
+            "date_of_birth",
+            "gender",
+            "biography",
+            "photo",
+            "home_address",
+            "current_address",
+            "political_party_name",
+            "political_party_slug",
+            "contact_number",
+            "website",
+            "facebook_url",
+            "twitter_url",
+            "instagram_url",
+            "is_active",
+        ]
+        # required by drf spectacular if we need to use same name for different serializers (though this serializer is unique, keeping here for reference)
+        ref_name = "GetPoliticalFigureDetailSerializer"
