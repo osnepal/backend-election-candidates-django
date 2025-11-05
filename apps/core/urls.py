@@ -3,8 +3,9 @@ from . import views
 
 urlpatterns = [
     # Political Party
+    path("core/", include([])),
     path(
-        "countries/get/list/",
+        "countries/",
         views.GetCountryListAPI.as_view(),
         name="get-country-list",
     ),

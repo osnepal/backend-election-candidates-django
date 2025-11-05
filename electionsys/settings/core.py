@@ -80,7 +80,6 @@ THIRD_PARTY_APPS = [
 ]
 
 if DEBUG:
-    print(type(DEBUG), DEBUG, "DEBUG is True, but how")
     THIRD_PARTY_APPS.append("django_extensions")
 
 INSTALLED_APPS = DJANGO_DEFAULT_APPS + LOCAL_APPS + THIRD_PARTY_APPS
