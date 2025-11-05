@@ -29,13 +29,21 @@ from django.conf.urls.static import static
 urlpatterns = [
     # NOTE: We'll have our own dashboard in NextJS, so don't use django admin
     # path('admin/', admin.site.urls),
-    path(f"{API_V1_PREFIX}/political-parties/", include("apps.political_party.urls")),
+    path(f"{API_V1_PREFIX}/", include("apps.political_party.urls")),
     path(f"{API_V1_PREFIX}/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path(f"{API_V1_PREFIX}/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path(f"{API_V1_PREFIX}/docs/redoc", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    path(f"{API_V1_PREFIX}/core/", include("apps.core.urls")),
-    path(f"{API_V1_PREFIX}/political-figures/", include("apps.political_figure.urls")),
-    path(f"{API_V1_PREFIX}/users/", include("apps.users.urls")),
+    path(
+        f"{API_V1_PREFIX}/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        f"{API_V1_PREFIX}/docs/redoc",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
+    path(f"{API_V1_PREFIX}/", include("apps.core.urls")),
+    path(f"{API_V1_PREFIX}/", include("apps.political_figure.urls")),
+    path(f"{API_V1_PREFIX}/", include("apps.users.urls")),
 ]
 
 if settings.DEBUG:
