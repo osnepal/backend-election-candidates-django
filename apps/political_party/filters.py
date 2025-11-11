@@ -7,7 +7,13 @@ class PoliticalPartyFilterSerializer(BaseFilterSerializer):
 
     # override to provide specific choices
     ordering = serializers.ChoiceField(
-        choices=[("name", "name"), ("founded_date", "founded_date")], required=False
+        choices=[
+            ("name", "name asc"),
+            ("-name", "name desc"),
+            ("founded_date", "founded_date asc"),
+            ("-founded_date", "founded_date desc"),
+        ],
+        required=False,
     )
 
     # Override to provide search help text
