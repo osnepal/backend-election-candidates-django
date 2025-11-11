@@ -3,17 +3,20 @@ from rest_framework import serializers
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
+from apps.political_party.filters import PoliticalPartyFilterSerializer
 from apps.political_party.models import PoliticalParty
 from apps.political_party.serializers import GetPoliticalPartyDetailSerializer
 from utils.core.base_views import PublicAPIView
+from utils.core.mixins import FilteredAPIMixin, PaginatedAPIMixin
 from utils.core.response_wrappers import OKResponse, NoContentResponse
 from utils.political_party.core import PoliticalPartyUtil
+from django.db.models import Q
 
 
 # ---------------------------------------------------------------------
 # List + Create
 # ---------------------------------------------------------------------
-class PoliticalPartyListCreateAPI(PublicAPIView):
+class PoliticalPartyListCreateAPI(PublicAPIView, PaginatedAPIMixin, FilteredAPIMixin):
     """
     GET: List all political parties
     POST: Create a new political party
@@ -21,15 +24,56 @@ class PoliticalPartyListCreateAPI(PublicAPIView):
 
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     output_serializer = GetPoliticalPartyDetailSerializer
+    filter_serializer_class = PoliticalPartyFilterSerializer
 
-    @extend_schema(responses=output_serializer(many=True))
+    @extend_schema(
+        responses=output_serializer(many=True),
+        parameters=[
+            filter_serializer_class,
+        ],
+    )
     def get(self, request):
         """
         GET: List all political parties
         """
-        queryset = PoliticalParty.objects.all().order_by("-created_at")
-        serializer = self.output_serializer(queryset, many=True)
-        return OKResponse(data=serializer.data)
+        # Get validated filter params
+        filters = self.get_filter_params()
+
+        # Build base queryset
+        political_parties = PoliticalParty.objects.all()
+
+        # Apply search if provided
+        search = filters.get("search")
+
+        if search:
+            q_object = Q()
+            q_object |= Q(name__icontains=search)
+            q_object |= Q(description__icontains=search)
+            political_parties = political_parties.filter(q_object)
+
+        # apply filters
+        if filters.get("is_active") is not None:
+            is_active = filters["is_active"]
+            temp_filter = {"dissolved_date__isnull": True}
+            if not is_active:
+                temp_filter["dissolved_date__isnull"] = False
+
+            political_parties = political_parties.filter(**temp_filter)
+
+        # Apply ordering
+        ordering = filters.get("ordering", "-created_at")
+        political_parties = self.apply_ordering(political_parties, ordering)
+
+        # Paginate
+        paginated_political_parties, paginator = self.paginate_queryset(
+            political_parties
+        )
+
+        # Serialize
+        serializer = self.output_serializer(paginated_political_parties, many=True)
+
+        # Return paginated response
+        return self.get_paginated_response(serializer.data, paginator)
 
     @extend_schema(
         request=PoliticalPartyUtil.create_serializer,
