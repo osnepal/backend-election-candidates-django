@@ -1,17 +1,22 @@
 from django.shortcuts import get_object_or_404
+from apps.political_figure.filters import PoliticalFigureFilterSerializer
 from apps.political_figure.models import PoliticalFigure
 from apps.political_figure.serializers import GetPoliticalFigureDetailSerializer
+from apps.political_party.filters import PoliticalPartyFilterSerializer
 from utils.core.base_views import PublicAPIView
+from utils.core.mixins import FilteredAPIMixin, PaginatedAPIMixin
 from utils.core.response_wrappers import NoContentResponse, OKResponse
 from utils.political_figure.core import PoliticalFigureUtil
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from drf_spectacular.utils import extend_schema
 
+from django.db.models import Q
+
 
 # ---------------------------------------------------------------------
 # Serializer (same as before)
 # ---------------------------------------------------------------------
-class PoliticalFigureListCreateAPI(PublicAPIView):
+class PoliticalFigureListCreateAPI(PublicAPIView, PaginatedAPIMixin, FilteredAPIMixin):
     """
     GET: List all political figures
     POST: Create a new political figure
@@ -21,18 +26,48 @@ class PoliticalFigureListCreateAPI(PublicAPIView):
     # But also allow JSONParser so that user can create using drf-spectacular's swagger ui.
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     output_serializer = GetPoliticalFigureDetailSerializer
+    filter_serializer_class = PoliticalFigureFilterSerializer
 
-    @extend_schema(responses=output_serializer(many=True))
+    @extend_schema(
+        responses=output_serializer(many=True), parameters=[filter_serializer_class]
+    )
     def get(self, request):
         """
         GET: List all political figures
 
         """
+
+        # Get validated filter params
+        filters = self.get_filter_params()
+
+        # build base queryset
         queryset = PoliticalFigure.objects.all().prefetch_related(
             "home_address", "current_address"
         )
+
+        # apply search if provided
+        search = filters.get("search")
+
+        if search:
+            q_object = Q()
+            q_object |= Q(full_name__icontains=search)
+            q_object |= Q(biography__icontains=search)
+            queryset = queryset.filter(q_object)
+
+        # apply filters; no filters are available right now
+
+        # apply ordering
+        ordering = filters.get("ordering", "-created_at")
+        queryset = self.apply_ordering(queryset, ordering)
+
+        # apply pagination
+        queryset, paginator = self.paginate_queryset(queryset)
+
+        # serialize
         serializer = self.output_serializer(queryset, many=True)
-        return OKResponse(data=serializer.data)
+
+        # Return paginated response
+        return self.get_paginated_response(serializer.data, paginator)
 
     @extend_schema(
         request=PoliticalFigureUtil.create_serializer,
